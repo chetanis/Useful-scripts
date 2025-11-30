@@ -1,14 +1,11 @@
 # Script Name: remove_last_page_from_pdfs.py
 # Description: This script removes the last page from all PDF files in a specified folder.
-# Author: [chetanis]
+# Author: chetanis
 # Dependencies: 
-# - PyPDF2: Used to read and manipulate PDF files. It allows you to extract pages, merge PDFs, and perform other operations. Install with `pip install PyPDF2`.
-# - PyCryptodome: Required for handling encrypted PDF files. PyPDF2 uses it for advanced encryption algorithms like AES. Install with `pip install PyCryptodome`.
-
+# - PyMuPDF (fitz): Used to read and manipulate PDF files. It allows you to extract pages, merge PDFs, and perform other operations. Install with `pip install PyMuPDF`.
 
 import os
-import PyPDF2
-from PyPDF2.errors import DependencyError
+import fitz  # PyMuPDF
 
 def remove_last_page_from_folder(input_folder, output_folder):
     # Ensure the output folder exists, or create it
@@ -22,34 +19,21 @@ def remove_last_page_from_folder(input_folder, output_folder):
             output_path = os.path.join(output_folder, filename)
 
             try:
-                with open(input_path, 'rb') as input_file:
-                    pdf_reader = PyPDF2.PdfReader(input_file)
-                    num_pages = len(pdf_reader.pages)
+                pdf_document = fitz.open(input_path)
+                num_pages = pdf_document.page_count
 
-                    if num_pages > 1:  # Ensure there's more than one page
-                        pdf_writer = PyPDF2.PdfWriter()
-
-                        # Add all pages except the last one
-                        for i in range(num_pages - 1):
-                            pdf_writer.add_page(pdf_reader.pages[i])
-
-                        with open(output_path, 'wb') as output_file:
-                            pdf_writer.write(output_file)
-
-                        print(f"Removed the last page from '{filename}', saved to '{output_path}'")
-                    else:
-                        print(f"'{filename}' only has one page, skipping.")
-
-            except DependencyError:
-                print(f"Could not process '{filename}' due to missing dependencies. "
-                      f"Ensure PyCryptodome is installed.")
-
-            except PyPDF2.errors.PdfReadError:
-                print(f"Error reading '{filename}'. It might be an encrypted or corrupted PDF.")
+                if num_pages > 1:  # Ensure there's more than one page
+                    pdf_document.delete_page(num_pages - 1)  # Delete the last page
+                    temp_output_path = output_path + ".temp"
+                    pdf_document.save(temp_output_path)
+                    pdf_document.close()
+                    os.replace(temp_output_path, output_path)
+                    print(f"Removed the last page from '{filename}', saved to '{output_path}'")
+                else:
+                    print(f"'{filename}' only has one page, skipping.")
 
             except Exception as e:
                 print(f"An error occurred while processing '{filename}': {str(e)}")
-
 
 # Example usage
 input_folder = '/input_folder'  # Folder with the original PDFs
